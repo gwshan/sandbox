@@ -14,6 +14,7 @@
 #include "list.h"
 
 #include "elf.h"
+#include "linux-headers/kvm.h"
 
 #endif /* __SANDBOX_H */
 
