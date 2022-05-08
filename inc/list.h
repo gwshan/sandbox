@@ -10,8 +10,6 @@
 #ifndef __SANDBOX_LIST_H
 #define __SANDBOX_LIST_H
 
-#include "sandbox.h"
-
 struct list_head {
 	struct list_head *next;
 	struct list_head *prev;
@@ -30,7 +28,7 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
 
 static inline int list_empty(struct list_head *list)
 {
-	return list->next == head;
+	return list->next == list;
 }
 
 static inline void __list_add(struct list_head *new,

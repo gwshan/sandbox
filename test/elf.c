@@ -10,29 +10,11 @@
 #include <fcntl.h>
 
 #include "sandbox.h"
-#include "elf.h"
 
 #define TEST_ELF_FILENAME		"/tmp/debug"
-#define ELF64_SHDR_TYPE_DEFAULT		ELF64_SHDR_TYPE_SYMTAB
+#define ELF64_SHDR_TYPE_DEFAULT		ELF64_SHDR_TYPE_RELA
 
 static uint32_t elf64_shdr_type = ELF64_SHDR_TYPE_DEFAULT;
-
-static struct elf64_shdr *find_elf64_shdr(struct elf64_hdr *hdr,
-					  uint32_t type)
-{
-	struct elf64_shdr *shdr;
-	int i;
-
-	shdr = (void *)hdr + hdr->e_shoff;
-	for (i = 0; i < hdr->e_shnum; i++) {
-		if (shdr->sh_type == type)
-			return shdr;
-
-		shdr = (void *)shdr + hdr->e_shentsize;
-	}
-
-	return NULL;
-}
 
 static void dump_elf64_hdr(struct elf64_hdr *hdr)
 {
@@ -83,8 +65,8 @@ static void dump_elf64_shdr(struct elf64_hdr *hdr,
 	fprintf(stdout, "========== ELF64 Section Header ==========\n");
 	fprintf(stdout, "\n");
 
-	fprintf(stdout, "sh_name:        %08x    %s\n",
-		shdr->sh_name, name ? name : "[none]");
+	fprintf(stdout, "sh_name:        %08x          %s\n",
+		shdr->sh_name, name);
 	fprintf(stdout, "sh_type:        %08x\n",    shdr->sh_type);
 	fprintf(stdout, "sh_flags:       %016llx\n", shdr->sh_flags);
 	fprintf(stdout, "sh_addr:        %016llx\n", shdr->sh_addr);

@@ -10,13 +10,10 @@
 #ifndef __SANDBOX_H
 #define __SANDBOX_H
 
-#define offsetof(TYPE, MEMBER)					\
-	((size_t)&((TYPE *)0)->MEMBER)
-#define offsetofend(TYPE, MEMBER)				\
-	(offsetof(TYPE, MEMBER) + sizeof(((TYPE *)0)->MEMBER))
-#define container_of(PTR, TYPE, MEMBER)	({			\
-	const typeof(((TYPE *)0)->member) *__PTR = (PTR);	\
-	(TYPE *)((char *)__PTR - offsetof(TYPE, MEMBER); })
+#include "base.h"
+#include "list.h"
+
+#include "elf.h"
 
 #endif /* __SANDBOX_H */
 
