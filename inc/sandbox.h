@@ -22,7 +22,9 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
+#include "config.h"
 #include "base.h"
+#include "atomic.h"
 #include "list.h"
 #include "rbtree.h"
 
