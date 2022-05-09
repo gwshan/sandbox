@@ -10,13 +10,20 @@
 #ifndef __SANDBOX_BASE_H
 #define __SANDBOX_BASE_H
 
-#define offsetof(TYPE, MEMBER)					\
-	((size_t)&((TYPE *)0)->MEMBER)
-#define offsetofend(TYPE, MEMBER)				\
-	(offsetof(TYPE, MEMBER) + sizeof(((TYPE *)0)->MEMBER))
-#define container_of(PTR, TYPE, MEMBER)	({			\
-	const typeof(((TYPE *)0)->member) *__PTR = (PTR);	\
-	(TYPE *)((char *)__PTR - offsetof(TYPE, MEMBER); })
+#define offsetof(type, member)					\
+	((size_t)&((type *)0)->member)
+#define offsetofend(type, member)				\
+	(offsetof(type, member) + sizeof(((type *)0)->member))
+#define container_of(ptr, type, member)	({			\
+	const typeof(((type *)0)->member) *__ptr = (ptr);	\
+	(type *)((char *)__ptr - offsetof(type, member); })
 
-#endif /* __SANDBOX_H */
+#define WRITE_ONCE(x, val)					\
+	do {							\
+		*(volatile typeof(x) *)&(x) = (val);		\
+	} while (0)
+#define READ_ONCE(x)						\
+	(*(const volatile typeof(x) *)&(x))
+
+#endif /* __SANDBOX_BASE_H */
 

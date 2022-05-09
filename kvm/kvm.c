@@ -7,27 +7,20 @@
  * (at your option) any later version.
  */
 
-#ifndef __SANDBOX_H
-#define __SANDBOX_H
-
 #include <stdio.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <strings.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <errno.h>
-#include <unistd.h>
-#include <string.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 
-#include "base.h"
-#include "list.h"
-#include "rbtree.h"
+#include "sandbox.h"
 
-#include "elf.h"
-#include "kvm.h"
+struct kvm_vm *kvm_vm_create(void)
+{
 
-#endif /* __SANDBOX_H */
-
+}
