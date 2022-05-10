@@ -24,21 +24,21 @@ static __always_inline void
 arch_set_bit(unsigned long *p, unsigned int nr)
 {
 	p += BIT_WORD(nr);
-	arch_atomic64_or(p, BIT_MASK(nr));
+	arch_atomic64_or((int64_t *)p, BIT_MASK(nr));
 }
 
 static __always_inline void
 arch_clear_bit(unsigned long *p, unsigned int nr)
 {
 	p += BIT_WORD(nr);
-	arch_atomic64_andnot(p, BIT_MASK(nr));
+	arch_atomic64_andnot((int64_t *)p, BIT_MASK(nr));
 }
 
 static __always_inline void
 arch_change_bit(unsigned long *p, unsigned int nr)
 {
 	p += BIT_WORD(nr);
-	arch_atomic64_xor(p, BIT_MASK(nr));
+	arch_atomic64_xor((int64_t *)p, BIT_MASK(nr));
 }
 
 static __always_inline int
@@ -51,7 +51,7 @@ arch_test_and_set_bit(unsigned long *p, unsigned int nr)
 	if (READ_ONCE(*p) & mask)
 		return 1;
 
-	old = arch_atomic64_fetch_or(p, mask);
+	old = arch_atomic64_fetch_or((int64_t *)p, mask);
 	return !!(old & mask);
 }
 
@@ -65,7 +65,7 @@ arch_test_and_clear_bit(unsigned long *p, unsigned int nr)
 	if (!(READ_ONCE(*p) & mask))
 		return 0;
 
-	old = arch_atomic64_fetch_andnot(p, mask);
+	old = arch_atomic64_fetch_andnot((int64_t *)p, mask);
 	return !!(old & mask);
 }
 
@@ -76,7 +76,7 @@ arch_test_and_change_bit(unsigned long *p, unsigned int nr)
 	unsigned long mask = BIT_MASK(nr);
 
 	p += BIT_WORD(nr);
-	old = arch_atomic64_fetch_xor(p, mask);
+	old = arch_atomic64_fetch_xor((int64_t *)p, mask);
 	return !!(old & mask);
 }
 

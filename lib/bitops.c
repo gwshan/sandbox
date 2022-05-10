@@ -31,7 +31,7 @@ unsigned long find_next_zero_bit(unsigned long *addr,
 	/* The start position may be unaligned */
 	if (start % BITS_PER_LONG) {
 		word = addr[start / BITS_PER_LONG] |
-		       GENMASK(start % BITS_PER_LONG - 1, 0)
+		       GENMASK(start % BITS_PER_LONG - 1, 0);
 		if (word != ~0UL) {
 			idx = ALIGN_DOWN(start, BITS_PER_LONG);
 			return min(idx + ffz(word), size);
@@ -68,8 +68,8 @@ unsigned long find_next_bit(unsigned long *addr,
 
 	/* The start position may be unaligned */
 	if (start % BITS_PER_LONG) {
-		word = addr[start / BITS_PER_LONG] |
-		       ~GENMASK(start % BITS_PER_LONG - 1, 0)
+		word = addr[start / BITS_PER_LONG] &
+		       ~GENMASK(start % BITS_PER_LONG - 1, 0);
 		if (word) {
 			idx = ALIGN_DOWN(start, BITS_PER_LONG);
 			return min(idx + ffs(word), size);
@@ -78,7 +78,7 @@ unsigned long find_next_bit(unsigned long *addr,
 
 	for (idx = DIV_ROUND_UP(start, BITS_PER_LONG);
 	     idx * BITS_PER_LONG < size; idx++) {
-		if (addr[idx]) {
+		if (addr[idx])
 			return min(idx * BITS_PER_LONG + ffs(addr[idx]), size);
 	}
 
@@ -96,7 +96,7 @@ unsigned long *bitmap_alloc(unsigned int size)
 	if (addr)
 		memset(addr, 0, len);
 
-	return len;
+	return NULL;
 }
 
 void bitmap_free(unsigned long *p)
