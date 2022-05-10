@@ -33,5 +33,12 @@
 	const typeof(((type *)0)->member) *__ptr = (ptr);	\
 	(type *)((char *)__ptr - offsetof(type, member); })
 
+/* Math */
+#define min(x, y)		((x) < (y) ? (x) : (y))
+#define max(x, y)		((x) < (y) ? (y) : (x))
+#define ALIGN(x, a)		(((x) + (a) - 1) & ~((a) - 1))
+#define ALIGN_DOWN(x, a)	((x) & ((a) - 1))
+#define DIV_ROUND_UP(n, d)	(((n) + (d) - 1) / (d))
+
 #endif /* __SANDBOX_BASE_H */
 

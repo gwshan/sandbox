@@ -25,6 +25,7 @@
 #include "config.h"
 #include "base.h"
 #include "atomic.h"
+#include "bitops.h"
 #include "list.h"
 #include "rbtree.h"
 
