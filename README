@@ -1,0 +1,27 @@
+
+			=======
+			Sandbox
+			=======
+
+KVM (Kernel Virtualization Moduel) plays critical role in the present data
+center environment, especially when virtualization is needed. When KVM is
+adopted, there are several components to be included: Host, KVM, VMM (QEMU)
+and guest. The application runs on top of guest OS. The requests from the
+applications can take long journey before they're completed. For example,
+the application's request can be sent to guest OS, KVM and then QEMU, where
+the request is emulated and completed.
+
+Sometimes, long journey means clumsy and low performance. So here I attempt
+to simplify the design by combing QEMU and guest OS into one, which is named
+as "sandbox". Presumablely, there are several tasks need to be done in the
+sandbox, in order to accommodate the running applications.
+
+  * Application startup, shutdown and packaging.
+
+  * System call services.
+
+  * CPU, memory, filesystem and networking.
+
+Obviously, the project is huge and needs tremendous invests. I'm taking this
+as a hobby project. So the invested time isn't guranteed and comitted. For
+more information and design, please refer to the documents in 'doc' directory.
