@@ -10,5 +10,27 @@
 
 int main(int argc, char **argv)
 {
-	return 0;
+	struct kvm_vm *vm;
+	unsigned long entry_point;
+	int ret;
+
+	vm = kvm_vm_create();
+	if (!vm)
+		return -ENOMEM;
+
+	ret = elf_load_file(vm, "/tmp/debug", &entry_point);
+	if (ret)
+		goto error;
+
+	ret = kvm_vcpu_create(vm, entry_point);
+	if (ret)
+		goto error;
+
+	while (true) {
+		/* FIXME: Check if the program can be executed */
+	}
+
+error:
+	kvm_vm_destroy(vm);
+	return ret;
 }

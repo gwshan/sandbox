@@ -127,6 +127,14 @@ bitmap_copy(unsigned long *dst, unsigned long *src, unsigned int size)
 	memcpy(dst, src, len);
 }
 
+#define bitmap_for_each_clear_range(b, e, addr, size)		\
+	for ((b) = find_next_zero_bit((addr), (size), 0),	\
+	     (e) = find_next_bit((addr), (size), (b) + 1);	\
+	     (b) < (size);					\
+	     (b) = find_next_zero_bit((addr), (size), (e) + 1),	\
+	     (e) = find_next_bit((addr), (size), (b) + 1))
+
+
 /* APIs */
 unsigned long find_first_zero_bit(unsigned long *addr, unsigned long size);
 unsigned long find_next_zero_bit(unsigned long *addr, unsigned long start,
@@ -134,7 +142,10 @@ unsigned long find_next_zero_bit(unsigned long *addr, unsigned long start,
 unsigned long find_first_bit(unsigned long *addr, unsigned long size);
 unsigned long find_next_bit(unsigned long *addr, unsigned long start,
 			    unsigned long size);
-
+void bitmap_set(unsigned long *addr,
+		unsigned long start, unsigned long size);
+void bitmap_clear(unsigned long *addr,
+		  unsigned long start, unsigned long size);
 unsigned long *bitmap_alloc(unsigned int size);
 void bitmap_free(unsigned long *p);
 

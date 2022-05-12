@@ -320,4 +320,7 @@ struct elf64_rel {
 #define R_AARCH64_TLSDESC    1031 /* TLS Descriptor                 */
 #define R_AARCH64_IRELATIVE  1032 /* STT_GNU_IFUNC relocation       */
 
+/* APIs */
+int elf_load_file(struct kvm_vm *vm, char *filename, unsigned long *p_entry);
+
 #endif /* __SANDBOX_ELF_H */

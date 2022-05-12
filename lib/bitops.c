@@ -85,7 +85,63 @@ unsigned long find_next_bit(unsigned long *addr,
 	return size;
 }
 
+void bitmap_set(unsigned long *addr,
+		unsigned long start,
+		unsigned long size)
+{
+	unsigned long mask, end;
 
+	if (start % BITS_PER_LONG) {
+		end = min(start & BITS_PER_LONG + size, 63);
+		mask = GENMASK(end, start % BITS_PER_LONG);
+		addr[start / BITS_PER_LONG] |= mask;
+
+		start = ALIGN(start, BITS_PER_LONG);
+		size -= (BITS_PER_LONG - start % BITS_PER_LONG);
+	}
+
+	mask = GENMASK(BITS_PER_LONG - 1, 0);
+	while (size >= BITS_PER_LONG) {
+		addr[start / BITS_PER_LONG] |= mask;
+
+		start += BITS_PER_LONG;
+		size -= BITS_PER_LONG;
+	}
+
+	if (size) {
+		mask = GENMASK(size - 1, 0);
+		addr[start / BITS_PER_LONG] |= mask;
+	}
+}
+
+void bitmap_clear(unsigned long *addr,
+		  unsigned long start,
+		  unsigned long size)
+{
+	unsigned long mask, end;
+
+	if (start % BITS_PER_LONG) {
+		end = min(start & BITS_PER_LONG + size, 63);
+		mask = GENMASK(end, start % BITS_PER_LONG);
+		addr[start / BITS_PER_LONG] &= ~mask;
+
+		start = ALIGN(start, BITS_PER_LONG);
+		size -= (BITS_PER_LONG - start % BITS_PER_LONG);
+	}
+
+	mask = GENMASK(BITS_PER_LONG - 1, 0);
+	while (size >= BITS_PER_LONG) {
+		addr[start / BITS_PER_LONG] &= ~mask;
+
+		start += BITS_PER_LONG;
+		size -= BITS_PER_LONG;
+	}
+
+	if (size) {
+		mask = GENMASK(size - 1, 0);
+		addr[start / BITS_PER_LONG] &= ~mask;
+	}
+}
 
 unsigned long *bitmap_alloc(unsigned int size)
 {

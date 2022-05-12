@@ -24,14 +24,16 @@
 
 #include "config.h"
 #include "base.h"
+#include "sysreg.h"
 #include "atomic.h"
 #include "bitops.h"
 #include "sparsebit.h"
 #include "list.h"
 #include "rbtree.h"
 
-#include "elf.h"
+#include "mm.h"
 #include "kvm.h"
+#include "elf.h"
 
 #endif /* __SANDBOX_H */
 
