@@ -6,6 +6,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
+
 #include "sandbox.h"
 
 static int elf_handle_header(int fd, struct elf64_hdr *hdr)
@@ -54,7 +55,7 @@ static int elf_load_segments(struct kvm_vm *vm,
 		return 0;
 
 	for (i = 0; i < hdr->e_phnum; i++) {
-		offset = lseek(fd, hdr->e_phoff + i * hdr->phentsize, SEEK_SET);
+		offset = lseek(fd, hdr->e_phoff + i * hdr->e_phentsize, SEEK_SET);
 		if (offset < 0) {
 			fprintf(stderr, "%s: Unable seek program header %d\n",
 				__func__, i);
@@ -73,14 +74,14 @@ static int elf_load_segments(struct kvm_vm *vm,
 
 		phys = kvm_mm_alloc_phys_pages(vm,
 				DIV_ROUND_UP(phdr->p_memsz, vm->mm.page_size));
-		vma = mm_alloc_vma(vm->mm.mm, MM_VMA_FLAG_FIXED,
+		vma = mm_alloc_vma(vm->mm.mm,
 				   ALIGN_DOWN(phdr->p_vaddr, vm->mm.page_size),
-				   ALIGN(phdr->p_memsz, vm->mm.page_size));
+				   ALIGN(phdr->p_memsz, vm->mm.page_size),
+				   MM_VMA_FLAG_FIXED, 0);
 		kvm_mm_map(vm, phys, vma->start,
-			   ALIGN(phdr->pmemsz, vm->mm.page_size));
-
+			   ALIGN(phdr->p_memsz, vm->mm.page_size));
 		addr = kvm_mm_gpa_to_hva(vm, phys) +
-		       (phdr->p_vaddr & (vm->mm.page_size - 1));
+				(phdr->p_vaddr & (vm->mm.page_size - 1));
 		offset = lseek(fd, phdr->p_offset, SEEK_SET);
 		if (offset < 0) {
 			fprintf(stderr, "%s: Unable to seek program segment %d\n",
@@ -88,7 +89,7 @@ static int elf_load_segments(struct kvm_vm *vm,
 			return -EIO;
 		}
 
-		ret = read(fd, (void *)addr, phdr->memsz);
+		ret = read(fd, (void *)addr, phdr->p_memsz);
 		if (ret != phdr->p_memsz) {
 			fprintf(stderr, "%s: Unable to read program segment %d\n",
 				__func__, i);
@@ -106,13 +107,12 @@ int elf_load_file(struct kvm_vm *vm,
 	struct elf64_hdr *hdr = NULL;
 	struct elf64_phdr *phdr = NULL;
 	struct elf64_shdr *shdr = NULL;
-	off_t offset;
 	int fd = 0, ret;
 
 	/* Open the file */
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
-		fprintf(stder, "%s: Unable to open <%s>\n",
+		fprintf(stderr, "%s: Unable to open <%s>\n",
 			__func__, filename);
 		ret = fd;
 		goto out;
@@ -141,7 +141,7 @@ int elf_load_file(struct kvm_vm *vm,
 
 	/* FIXME: Relocation and resolution */  
 
-	*p_entry = hdr->e_entry;
+	*pentry = hdr->e_entry;
 out:
 	if (shdr)
 		free(shdr);

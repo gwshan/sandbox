@@ -10,6 +10,8 @@
 #ifndef __SANDBOX_KVM_H
 #define __SANDBOX_KVM_H
 
+#include "linux-headers/kvm.h"
+
 #define KVM_ARM64_CORE_REG(x)				\
 	(KVM_REG_ARM64 | KVM_REG_SIZE_U64 |		\
 	 KVM_REG_ARM_CORE | KVM_REG_ARM_CORE_REG(x))
@@ -30,13 +32,14 @@ struct kvm_vm_mm {
 
 	unsigned long	phys_page_base;	/* Start PFN			*/
 	unsigned long	phys_page_num;	/* Number of physical pages	*/
-	unsigned long	phys_page_bits;	/* Free page bitmap		*/
-	unsigned long	host_virt_addr;	/* Host virtual address		*/
+	unsigned long	*phys_page_bits; /* Free page bitmap		*/
+	void		*host_virt_addr; /* Host virtual address		*/
 };
 
 struct kvm_vcpu {
 	struct kvm_vm		*vm;		/* Associated VM	*/
-	unsigned int		id;		/* vCPU ID		*/
+	int			fd;		/* FD                   */
+	unsigned int		id;		/* vCPU ID		*/	
 	struct kvm_run		*state;		/* Running state	*/
 	unsigned long		state_size;	/* Running state size	*/
 
@@ -57,14 +60,15 @@ struct kvm_vm {
 /* APIs */
 struct kvm_vm *kvm_vm_create(void);
 int kvm_vcpu_create(struct kvm_vm *vm, unsigned long entry_point);
-int kvm_vcpu_get_reg(struct kvm_vcpu *vcpu, unsigned int id,
+int kvm_vcpu_get_reg(struct kvm_vcpu *vcpu, unsigned long id,
 		     unsigned long *val);
-int kvm_vcpu_set_reg(struct kvm_vcpu *vcpu, unsigned int id,
+int kvm_vcpu_set_reg(struct kvm_vcpu *vcpu, unsigned long id,
 		     unsigned long val);
 void kvm_vcpu_destroy(struct kvm_vcpu *vcpu);
 void kvm_vm_destroy(struct kvm_vm *vm);
 
 /* Memory management */
+unsigned long kvm_mm_gpa_to_hva(struct kvm_vm *vm, unsigned long gpa);
 unsigned long kvm_mm_alloc_phys_pages(struct kvm_vm *vm,
 				      unsigned long npages);
 void kvm_mm_map(struct kvm_vm *vm, unsigned long phys,

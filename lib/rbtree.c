@@ -49,9 +49,9 @@ static inline void rb_set_parent_color(struct rb_node *node,
 }
 
 static inline void rb_change_child(struct rb_root *root,
+				   struct rb_node *parent,
 				   struct rb_node *old,
-				   struct rb_node *new,
-				   struct rb_node *parent)
+				   struct rb_node *new)
 {
 	if (parent) {
 		if (parent->left == old)
@@ -71,7 +71,7 @@ static inline void rb_rotate_set_parents(struct rb_root *root,
 	struct rb_node *parent = rb_parent(old);
 	new->parent_color = old->parent_color;
 	rb_set_parent_color(old, new, color);
-	rb_change_child(root, old, new, parent);
+	rb_change_child(root, parent, old, new);
 }
 
 void rb_insert(struct rb_root *root, struct rb_node *node)
@@ -204,7 +204,103 @@ void rb_insert(struct rb_root *root, struct rb_node *node)
 	}
 }
 
-void rb_erase(struct rb_root *root, struct rb_node *parent)
+static struct rb_node *__rb_erase_filter(struct rb_root *root, struct rb_node *node)
+{
+	struct rb_node *child = node->right;
+	struct rb_node *tmp = node->left;
+	struct rb_node *parent, *rebalance;
+	unsigned long pc;
+
+	if (!tmp) {
+		/*
+ 	         * Case 1: node to erase has no more than 1 child (easy!)
+		 *
+	         * Note that if there is one child it must be red due to 5)
+	         * and node must be black due to 4). We adjust colors locally
+		 * so as to bypass __rb_erase_color() later on.
+		 */
+		pc = node->parent_color;
+		parent = (struct rb_node *)(pc & ~(RB_BLACK | RB_RED));
+		rb_change_child(root, parent, node, child);
+		if (child) {
+			child->parent_color = pc;
+			rebalance = NULL;
+		} else {
+			rebalance = (pc & RB_BLACK) ? parent : NULL;
+		}
+
+		tmp = parent;
+	} else if (!child) {
+		/* Still case 1, but this time the child is node->left */
+		tmp->parent_color = pc = node->parent_color;
+		parent = (struct rb_node *)(pc & ~(RB_BLACK | RB_RED));
+		rb_change_child(root, parent, node, tmp);
+		rebalance = NULL;
+		tmp = parent;
+	} else {
+		struct rb_node *successor = child, *child2;
+
+		tmp = child->left;
+		if (!tmp) {
+			/*
+			 * Case 2: node's successor is its right child
+			 *
+			 *    (n)          (s)
+			 *    / \          / \
+			 *  (x) (s)  ->  (x) (c)
+			 *        \
+			 *        (c)
+			 */
+			parent = successor;
+			child2 = successor->right;
+		} else {
+			/*
+			 * Case 3: node's successor is leftmost under
+			 * node's right child subtree
+			 *
+			 *    (n)          (s)
+			 *    / \          / \
+			 *  (x) (y)  ->  (x) (y)
+			 *      /            /
+			 *    (p)          (p)
+			 *    /            /
+			 *  (s)          (c)
+			 *    \
+			 *    (c)
+			 */
+			do {
+				parent = successor;
+				successor = tmp;
+				tmp = tmp->left;
+			} while (tmp);
+			child2 = successor->right;
+			WRITE_ONCE(parent->left, child2);
+			WRITE_ONCE(successor->right, child);
+			rb_set_parent(child, successor);
+		}
+
+		tmp = node->left;
+		WRITE_ONCE(successor->left, tmp);
+		rb_set_parent(tmp, successor);
+
+		pc = node->parent_color;
+		tmp = (struct rb_node *)(pc & ~(RB_BLACK | RB_RED));
+		rb_change_child(root, tmp, node, successor);
+
+		if (child2) {
+			rb_set_parent_color(child2, parent, RB_BLACK);
+			rebalance = NULL;
+		} else {
+			rebalance = rb_is_black(successor) ? parent : NULL;
+		}
+		successor->parent_color = pc;
+		tmp = successor;
+	}
+
+	return rebalance;
+}
+
+static void __rb_erase(struct rb_root *root, struct rb_node *parent)
 {
 	struct rb_node *node = NULL, *sibling, *tmp1, *tmp2;
 
@@ -378,6 +474,15 @@ void rb_erase(struct rb_root *root, struct rb_node *parent)
 	}
 }
 
+void rb_erase(struct rb_root *root, struct rb_node *node)
+{
+	struct rb_node *rebalance;
+
+	rebalance = __rb_erase_filter(root, node);
+	if (rebalance)
+		__rb_erase(root, rebalance);
+}
+
 void rb_replace(struct rb_root *root, struct rb_node *old, struct rb_node *new)
 {
 	struct rb_node *parent = rb_parent(old);
@@ -391,7 +496,7 @@ void rb_replace(struct rb_root *root, struct rb_node *old, struct rb_node *new)
 	if (old->right)
 		rb_set_parent(old->right, new);
 
-	rb_change_child(root, old, new, parent);
+	rb_change_child(root, parent, old, new);
 }
 
 struct rb_node *rb_first(struct rb_root *root)

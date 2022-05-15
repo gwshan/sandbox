@@ -23,7 +23,7 @@
  */
 #define SYS_REG_OP0_SHIFT	19
 #define SYS_REG_OP0_MASK	0x3
-#define SYS_ERG_OP1_SHIFT	16
+#define SYS_REG_OP1_SHIFT	16
 #define SYS_REG_OP1_MASK	0x7
 #define SYS_REG_CRN_SHIFT	12
 #define SYS_REG_CRN_MASK	0xf
@@ -55,7 +55,7 @@
 	 (((op1) & SYS_REG_OP1_MASK) << SYS_REG_OP1_SHIFT) |	\
 	 (((crn) & SYS_REG_CRN_MASK) << SYS_REG_CRN_SHIFT) |	\
 	 (((crm) & SYS_REG_CRM_MASK) << SYS_REG_CRM_SHIFT) |	\
-	 (((op2) & SYS_REG_OP2_MASK) << SYS_REG_OP2_MASK))
+	 (((op2) & SYS_REG_OP2_MASK) << SYS_REG_OP2_SHIFT))
 
 #define SYS_REG_OSDTRRX_EL1		SYS_REG(2, 0, 0, 0, 2)
 #define SYS_REG_MDCCINT_EL1		SYS_REG(2, 0, 0, 2, 0)

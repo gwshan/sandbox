@@ -35,7 +35,7 @@ struct vm_area {
 	unsigned long		prot;
 
 	struct vm_area		*prev;
-	struct vm_read		*next;
+	struct vm_area		*next;
 	struct mm		*mm;
 	struct rb_node		node;
 };
@@ -57,11 +57,9 @@ struct mm {
 };
 
 /* APIs */
-struct mm *mm_create(void);
+struct mm *mm_create(unsigned long addr, unsigned long end);
 void mm_destroy(struct mm *mm);
 struct vm_area *mm_find_vma(struct mm *mm, unsigned long addr,
-			    struct vm_area *pprev);
-struct vm_area *mm_find_vma(struct mm *mm, unsinged long addr,
 			    struct vm_area **pprev);
 struct vm_area *mm_alloc_vma(struct mm *mm, unsigned long addr,
 			     unsigned long len, unsigned long flags,

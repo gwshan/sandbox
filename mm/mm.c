@@ -20,7 +20,7 @@ struct mm *mm_create(unsigned long addr,
 	}
 
 	memset(mm, 0, sizeof(*mm));
-	mm->start = start;
+	mm->start = addr;
 	mm->end = end;
 	mm->root.node = NULL;
 	mm->vma = NULL;
@@ -38,7 +38,7 @@ void mm_destroy(struct mm *mm)
 		if (mm->vma)
 			mm->vma->prev = NULL;
 
-		rb_erase(&nn->root, &vma->node);
+		rb_erase(&mm->root, &vma->node);
 		free(vma);
 	}
 
@@ -51,7 +51,6 @@ struct vm_area *mm_find_vma(struct mm *mm,
 {
 	struct vm_area *tmp, *vma = NULL;
 	struct rb_node *node = mm->root.node;
-	struct list_head *link;
 
 	while (node) {
 		tmp = rb_entry(node, struct vm_area, node);
@@ -68,17 +67,17 @@ struct vm_area *mm_find_vma(struct mm *mm,
 
 	if (pprev) {
 		if (vma) {
-			*prev = vma->prev;
+			*pprev = vma->prev;
 		} else {
 			node = rb_last(&mm->root);
-			*prev = node ? rb_entry(node, struct vm_area, node) : NULL;
+			*pprev = node ? rb_entry(node, struct vm_area, node) : NULL;
 		}
 	}
 
 	return vma;
 }
 
-static int find_vma_link(struct mm_struct *mm,
+static int find_vma_link(struct mm *mm,
 			 unsigned long addr,
 			 unsigned long len,
 			 struct vm_area **prev,
@@ -161,7 +160,7 @@ struct vm_area *mm_alloc_vma(struct mm *mm,
 		r_start = mm->start;
 		r_end = vma->start;
 		if ((r_end - r_start) >= len) {
-			addr = r->end - len;
+			addr = r_end - len;
 			goto found;
 		}
 
@@ -187,7 +186,6 @@ found:
 	if (prev) {
 		next = prev->next;
 		prev->next = vma;
-		next = prev->next;
 	} else {
 		next = mm->vma;
 		mm->vma = vma;

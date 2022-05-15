@@ -7,24 +7,14 @@
  * (at your option) any later version.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <strings.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-
 #include "sandbox.h"
 
 struct kvm_vm *kvm_vm_create(void)
 {
 	struct kvm_vm *vm = NULL;
 	struct kvm_vm_mm *mm = NULL;
-	struct kvm_memory_region region;
+	struct kvm_userspace_memory_region region;
+	int ret;
 
 	vm = malloc(sizeof(*vm));
 	if (!vm)
@@ -36,13 +26,13 @@ struct kvm_vm *kvm_vm_create(void)
 	vm->fd_dev = open("/dev/kvm", O_RDWR);
 	if (vm->fd_dev < 0) {
 		fprintf(stderr, "%s: Unable to open </dev/kvm>\n", __func__);
-		return NULL;
+		goto error;
 	}
 
-	vm->fd = ioctl(kvm->fd_dev, KVM_CREATE_VM, 0);
+	vm->fd = ioctl(vm->fd_dev, KVM_CREATE_VM, 0);
 	if (vm->fd < 0) {
 		fprintf(stderr, "%s: Unable to create VM\n", __func__);
-		goto out;
+		goto error;
 	}
 
 	/* Initialize memory management parameters */
@@ -54,11 +44,11 @@ struct kvm_vm *kvm_vm_create(void)
 	mm->pgtable_levels = 4;
 	mm->phys_page_base = 0UL;
 	mm->phys_page_num = 0x200;
-	mm->host_virt_addr = MPA_FAILED;
+	mm->host_virt_addr = MAP_FAILED;
 	mm->phys_page_bits = bitmap_alloc(mm->phys_page_num);
 	if (mm->phys_page_bits) {
 		bitmap_zero(mm->phys_page_bits, mm->phys_page_num);
-	} elese {
+	} else {
 		fprintf(stderr, "%s: Unable to alloc bitmap (0x%lx)\n",
 			__func__, mm->phys_page_num);
 		goto error;
@@ -78,8 +68,7 @@ struct kvm_vm *kvm_vm_create(void)
 	/* Setup memory slot */
 	mm->host_virt_addr = mmap(NULL, mm->phys_page_num * mm->page_size,
 				  PROT_READ | PROT_WRITE,
-				  MAP_PRIVATE | MAP_ANONYMOUS,
-				  NULL, 0);
+				  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (mm->host_virt_addr == MAP_FAILED) {
 		fprintf(stderr, "%s: Unable to map memory (0x%lx)\n",
 			__func__, mm->phys_page_num * mm->page_size);
@@ -99,7 +88,7 @@ struct kvm_vm *kvm_vm_create(void)
 	region.flags = 0;
 	region.guest_phys_addr = mm->phys_page_base << mm->page_shift;
 	region.memory_size = mm->phys_page_num * mm->page_size;
-	region.userspace_addr = mm->host_virt_addr;
+	region.userspace_addr = (unsigned long)mm->host_virt_addr;
 	ret = ioctl(vm->fd, KVM_SET_USER_MEMORY_REGION, &region);
 	if (ret) {
 		fprintf(stderr, "%s: Unable to set user memory region (%d)\n",
@@ -127,12 +116,11 @@ error:
 
 int kvm_vcpu_create(struct kvm_vm *vm, unsigned long entry_point)
 {
-	struct kvm_mm *mm = &kvm->mm;
+	struct kvm_vm_mm *mm = &vm->mm;
 	struct kvm_vcpu *vcpu = NULL, *tmp;
 	struct kvm_vcpu_init init, preferred;
-	struct kvm_one_reg reg;
 	struct vm_area *vma;
-	unsigned long phys, sctlr_el1, tcr_el1;
+	unsigned long phys, sctlr_el1 = 0, tcr_el1 = 0;
 	unsigned int id;
 	int ret = 0;
 
@@ -205,10 +193,13 @@ int kvm_vcpu_create(struct kvm_vm *vm, unsigned long entry_point)
 		goto error;
 	}
 
-	/* Set vCPU registers */
+	/*
+	 * Set vCPU registers. Some of the registers might be write-only.
+	 * We're just try our best here. Its return value won't be checked.
+	 */
 	ret = kvm_vcpu_get_reg(vcpu, KVM_ARM64_SYS_REG(SYS_REG_SCTLR_EL1),
 			       &sctlr_el1);
-	ret |= kvm_vcpu_get_reg(vcpu, KVM_ARM64_SYS_REG(SYS_REG_TCR_EL1),
+	ret = kvm_vcpu_get_reg(vcpu, KVM_ARM64_SYS_REG(SYS_REG_TCR_EL1),
 				&tcr_el1);
 	if (ret) {
 		fprintf(stderr, "%s: Unable to get registers (%d)\n",
@@ -218,9 +209,9 @@ int kvm_vcpu_create(struct kvm_vm *vm, unsigned long entry_point)
 
 	sctlr_el1 |= (1 << 0) | (1 << 2) | (1 << 12);	/* M | C | I    */
 	tcr_el1   |= (0 << 14);				/* TG0: 4KB     */
-	tcr_el1   |= (1 << 32);				/* IPS: 36 bits */
+	tcr_el1   |= (1UL << 32);			/* IPS: 36 bits */
 	tcr_el1   |= (1 << 8) | (1 << 10) | (3 << 12);
-	tcr_el1   |= (64 - vm->va_bits);		/* T0SZ         */
+	tcr_el1   |= (64 - mm->va_bits);		/* T0SZ         */
 
 	ret = kvm_vcpu_set_reg(vcpu, KVM_ARM64_SYS_REG(SYS_REG_CPACR_EL1),
 			       (3 << 20));
@@ -265,26 +256,26 @@ error:
 }
 
 int kvm_vcpu_get_reg(struct kvm_vcpu *vcpu,
-		     unsigned int id,
+		     unsigned long id,
 		     unsigned long *val)
 {
 	struct kvm_one_reg reg;
 
 	reg.id = id;
-	reg.addr = (void *)val;
+	reg.addr = (unsigned long)val;
 
 	return ioctl(vcpu->fd, KVM_GET_ONE_REG, &reg);
 }
 
 
 int kvm_vcpu_set_reg(struct kvm_vcpu *vcpu,
-		     unsigned int id,
+		     unsigned long id,
 		     unsigned long val)
 {
 	struct kvm_one_reg reg;
 
 	reg.id = id;
-	reg.addr = (void *)&val;
+	reg.addr = (unsigned long)&val;
 
 	return ioctl(vcpu->fd, KVM_SET_ONE_REG, &reg);
 }
@@ -302,7 +293,7 @@ void kvm_vm_destroy(struct kvm_vm *vm)
 	struct kvm_vcpu *vcpu, *tmp;
 	struct kvm_vm_mm *mm = &vm->mm;
 
-	list_for_each_entry_safe(vcpu, tmp, &kvm->vcpu_list, link)
+	list_for_each_entry_safe(vcpu, tmp, &vm->vcpu_list, link)
 		kvm_vcpu_destroy(vcpu);
 
 	mm_destroy(mm->mm);

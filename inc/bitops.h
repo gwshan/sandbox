@@ -127,28 +127,27 @@ bitmap_copy(unsigned long *dst, unsigned long *src, unsigned int size)
 	memcpy(dst, src, len);
 }
 
-#define bitmap_for_each_clear_range(b, e, addr, size)		\
-	for ((b) = find_next_zero_bit((addr), (size), 0),	\
-	     (e) = find_next_bit((addr), (size), (b) + 1);	\
-	     (b) < (size);					\
-	     (b) = find_next_zero_bit((addr), (size), (e) + 1),	\
-	     (e) = find_next_bit((addr), (size), (b) + 1))
+#define bitmap_for_each_zero_range(b, e, addr, size)			\
+	for ((b) = bitmap_next_zero_bit((addr), 0, (size)),		\
+	     (e) = bitmap_next_set_bit((addr), (b) + 1, (size));	\
+	     (b) < (size);						\
+	     (b) = bitmap_next_zero_bit((addr), (e) + 1, (size)),	\
+	     (e) = bitmap_next_set_bit((addr), (b) + 1, (size)))
 
 
 /* APIs */
-unsigned long find_first_zero_bit(unsigned long *addr, unsigned long size);
-unsigned long find_next_zero_bit(unsigned long *addr, unsigned long start,
-				 unsigned long size);
-unsigned long find_first_bit(unsigned long *addr, unsigned long size);
-unsigned long find_next_bit(unsigned long *addr, unsigned long start,
-			    unsigned long size);
+unsigned long *bitmap_alloc(unsigned int size);
+void bitmap_free(unsigned long *addr);
 void bitmap_set(unsigned long *addr,
 		unsigned long start, unsigned long size);
 void bitmap_clear(unsigned long *addr,
 		  unsigned long start, unsigned long size);
-unsigned long *bitmap_alloc(unsigned int size);
-void bitmap_free(unsigned long *p);
-
+unsigned long bitmap_first_zero_bit(unsigned long *addr, unsigned long size);
+unsigned long bitmap_next_zero_bit(unsigned long *addr, unsigned long start,
+				 unsigned long size);
+unsigned long bitmap_first_set_bit(unsigned long *addr, unsigned long size);
+unsigned long bitmap_next_set_bit(unsigned long *addr, unsigned long start,
+				  unsigned long size);
 
 #endif /* __SANDBOX_BITOPS_H */
 

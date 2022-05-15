@@ -26,10 +26,6 @@ int main(int argc, char **argv)
 	if (ret)
 		goto error;
 
-	while (true) {
-		/* FIXME: Check if the program can be executed */
-	}
-
 error:
 	kvm_vm_destroy(vm);
 	return ret;

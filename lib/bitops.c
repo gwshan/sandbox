@@ -9,140 +9,6 @@
 
 #include "sandbox.h"
 
-unsigned long find_first_zero_bit(unsigned long *addr,
-				  unsigned long size)
-{
-	unsigned long idx;
-
-	for (idx = 0; idx * BITS_PER_LONG < size; idx++) {
-		if (addr[idx] != ~0UL)
-			return min(idx * BITS_PER_LONG + ffz(addr[idx]), size);
-	}
-
-        return size;
-}
-
-unsigned long find_next_zero_bit(unsigned long *addr,
-				 unsigned long start,
-				 unsigned long size)
-{
-	unsigned long word, idx;
-
-	/* The start position may be unaligned */
-	if (start % BITS_PER_LONG) {
-		word = addr[start / BITS_PER_LONG] |
-		       GENMASK(start % BITS_PER_LONG - 1, 0);
-		if (word != ~0UL) {
-			idx = ALIGN_DOWN(start, BITS_PER_LONG);
-			return min(idx + ffz(word), size);
-		}
-	}
-
-	for (idx = DIV_ROUND_UP(start, BITS_PER_LONG);
-	     idx * BITS_PER_LONG < size; idx++) {
-		if (addr[idx] != ~0UL)
-			return min(idx * BITS_PER_LONG + ffz(addr[idx]), size);
-	}
-
-	return size;
-}
-
-unsigned long find_first_bit(unsigned long *addr,
-			     unsigned long size)
-{
-	unsigned long idx;
-
-	for (idx = 0; idx * BITS_PER_LONG < size; idx++) {
-		if (addr[idx])
-			return min(idx * BITS_PER_LONG + ffs(addr[idx]), size);
-	}
-
-	return size;
-}
-
-unsigned long find_next_bit(unsigned long *addr,
-			    unsigned long start,
-			    unsigned long size)
-{
-	unsigned long word, idx;
-
-	/* The start position may be unaligned */
-	if (start % BITS_PER_LONG) {
-		word = addr[start / BITS_PER_LONG] &
-		       ~GENMASK(start % BITS_PER_LONG - 1, 0);
-		if (word) {
-			idx = ALIGN_DOWN(start, BITS_PER_LONG);
-			return min(idx + ffs(word), size);
-		}
-	}
-
-	for (idx = DIV_ROUND_UP(start, BITS_PER_LONG);
-	     idx * BITS_PER_LONG < size; idx++) {
-		if (addr[idx])
-			return min(idx * BITS_PER_LONG + ffs(addr[idx]), size);
-	}
-
-	return size;
-}
-
-void bitmap_set(unsigned long *addr,
-		unsigned long start,
-		unsigned long size)
-{
-	unsigned long mask, end;
-
-	if (start % BITS_PER_LONG) {
-		end = min(start & BITS_PER_LONG + size, 63);
-		mask = GENMASK(end, start % BITS_PER_LONG);
-		addr[start / BITS_PER_LONG] |= mask;
-
-		start = ALIGN(start, BITS_PER_LONG);
-		size -= (BITS_PER_LONG - start % BITS_PER_LONG);
-	}
-
-	mask = GENMASK(BITS_PER_LONG - 1, 0);
-	while (size >= BITS_PER_LONG) {
-		addr[start / BITS_PER_LONG] |= mask;
-
-		start += BITS_PER_LONG;
-		size -= BITS_PER_LONG;
-	}
-
-	if (size) {
-		mask = GENMASK(size - 1, 0);
-		addr[start / BITS_PER_LONG] |= mask;
-	}
-}
-
-void bitmap_clear(unsigned long *addr,
-		  unsigned long start,
-		  unsigned long size)
-{
-	unsigned long mask, end;
-
-	if (start % BITS_PER_LONG) {
-		end = min(start & BITS_PER_LONG + size, 63);
-		mask = GENMASK(end, start % BITS_PER_LONG);
-		addr[start / BITS_PER_LONG] &= ~mask;
-
-		start = ALIGN(start, BITS_PER_LONG);
-		size -= (BITS_PER_LONG - start % BITS_PER_LONG);
-	}
-
-	mask = GENMASK(BITS_PER_LONG - 1, 0);
-	while (size >= BITS_PER_LONG) {
-		addr[start / BITS_PER_LONG] &= ~mask;
-
-		start += BITS_PER_LONG;
-		size -= BITS_PER_LONG;
-	}
-
-	if (size) {
-		mask = GENMASK(size - 1, 0);
-		addr[start / BITS_PER_LONG] &= ~mask;
-	}
-}
-
 unsigned long *bitmap_alloc(unsigned int size)
 {
 	unsigned int len = BITS_TO_LONGS(size) * sizeof(unsigned long);
@@ -152,10 +18,200 @@ unsigned long *bitmap_alloc(unsigned int size)
 	if (addr)
 		memset(addr, 0, len);
 
-	return NULL;
+	return addr;
 }
 
-void bitmap_free(unsigned long *p)
+void bitmap_free(unsigned long *addr)
 {
-	free(p);
+	free(addr);
+}
+
+void bitmap_set(unsigned long *addr,
+		unsigned long start,
+		unsigned long size)
+{
+	unsigned long offset, mask, end;
+
+	/* Set the leading bits */
+	offset = (start & (BITS_PER_LONG - 1));
+	if (offset) {
+		end = min(offset + size, 64);
+		mask = GENMASK(end - 1, offset);
+		WRITE_ONCE(addr[start / BITS_PER_LONG],
+			   READ_ONCE(addr[start / BITS_PER_LONG]) | mask);
+
+		start = ALIGN(start, BITS_PER_LONG);
+		size -= (end - offset);
+	}
+
+	/* Set the middle bits */
+	mask = GENMASK(BITS_PER_LONG - 1, 0);
+	while (size >= BITS_PER_LONG) {
+		WRITE_ONCE(addr[start / BITS_PER_LONG],
+			   READ_ONCE(addr[start / BITS_PER_LONG]) | mask);
+
+		start += BITS_PER_LONG;
+		size -= BITS_PER_LONG;
+	}
+
+	/* Set the tailing bits */
+	if (size) {
+		mask = GENMASK(size - 1, 0);
+		WRITE_ONCE(addr[start / BITS_PER_LONG],
+			   READ_ONCE(addr[start / BITS_PER_LONG]) | mask);
+	}
+}
+
+void bitmap_clear(unsigned long *addr,
+		  unsigned long start,
+		  unsigned long size)
+{
+	unsigned long offset, mask, end;
+
+	/* Clear the leading bits */
+	offset = (start & (BITS_PER_LONG - 1));
+	if (offset) {
+		end = min(offset + size, 64);
+		mask = GENMASK(end - 1, offset);
+		WRITE_ONCE(addr[start / BITS_PER_LONG],
+			   READ_ONCE(addr[start / BITS_PER_LONG]) & ~mask);
+
+		start = ALIGN(start, BITS_PER_LONG);
+		size -= (end - offset);
+	}
+
+	/* Clear the middle bits */
+	mask = GENMASK(BITS_PER_LONG - 1, 0);
+	while (size >= BITS_PER_LONG) {
+		WRITE_ONCE(addr[start / BITS_PER_LONG],
+			   READ_ONCE(addr[start / BITS_PER_LONG]) & ~ mask);
+
+		start += BITS_PER_LONG;
+		size -= BITS_PER_LONG;
+	}
+
+	/* Clear the tailing bits */
+	if (size) {
+		mask = GENMASK(size - 1, 0);
+		WRITE_ONCE(addr[start / BITS_PER_LONG],
+			   READ_ONCE(addr[start / BITS_PER_LONG]) | mask);
+	}
+}
+
+unsigned long bitmap_first_zero_bit(unsigned long *addr,
+				    unsigned long size)
+{
+	unsigned long idx, val;
+
+	for (idx = 0; idx * BITS_PER_LONG < size; idx++) {
+		val = READ_ONCE(addr[idx]);
+		if (val != ~0UL)
+			return min(idx * BITS_PER_LONG + ffz(val), size);
+	}
+
+	return size;
+}
+
+unsigned long bitmap_next_zero_bit(unsigned long *addr,
+				   unsigned long start,
+				   unsigned long size)
+{
+	unsigned long idx, offset, end, val, mask;
+	unsigned long sz = size;
+
+	/*
+	 * Check the leading bits because @start might be unaligned to
+	 * BITS_PER_LONG.
+	 */
+	offset = start & (BITS_PER_LONG - 1);
+	if (offset) {
+		end = min(size, 64);
+		mask = GENMASK(end - 1, offset);
+		val = READ_ONCE(addr[start / BITS_PER_LONG]);
+		if ((val & mask) != mask) {
+			idx = ALIGN_DOWN(start, BITS_PER_LONG);
+			return min(idx + ffz(val | ~mask), sz);
+		}
+
+		start = ALIGN(start, BITS_PER_LONG);
+		size -= (end - offset);
+	}
+
+	while (size >= BITS_PER_LONG) {
+		val = READ_ONCE(addr[start / BITS_PER_LONG]);
+		if (val != ~0UL)
+			return min(start + ffz(val), sz);
+
+		start += BITS_PER_LONG;
+		size -= BITS_PER_LONG;
+	}
+
+	/* Check the tailing bits */
+	if (size) {
+		mask = GENMASK(size - 1, 0);
+		val = READ_ONCE(addr[start / BITS_PER_LONG]);
+		if ((val & mask) != mask)
+			return min(start + ffz(val | ~mask), sz);
+	}
+
+	return sz;
+}
+
+unsigned long bitmap_first_set_bit(unsigned long *addr,
+				   unsigned long size)
+{
+	unsigned long idx, val;
+
+	for (idx = 0; idx * BITS_PER_LONG < size; idx++) {
+		val = READ_ONCE(addr[idx]);
+		if (val != 0UL)
+			return min(idx * BITS_PER_LONG + ffs(val), size);
+	}
+
+	return size;
+}
+
+unsigned long bitmap_next_set_bit(unsigned long *addr,
+				  unsigned long start,
+				  unsigned long size)
+{
+	unsigned long idx, offset, end, val, mask;
+	unsigned long sz = size;
+
+	/*
+	 * Check the leading bits because @start might be unaligned to
+	 * BITS_PER_LONG.
+	 */
+	offset = start & (BITS_PER_LONG - 1);
+	if (offset) {
+		end = min(size, 64);
+		mask = GENMASK(end - 1, offset);
+		val = READ_ONCE(addr[start / BITS_PER_LONG]);
+		if ((val & mask) != 0UL) {
+			idx = ALIGN_DOWN(start, BITS_PER_LONG);
+			return min(idx + ffs(val & mask), sz);
+		}
+
+		start = ALIGN(start, BITS_PER_LONG);
+		size -= (end - offset);
+	}
+
+	while (size >= BITS_PER_LONG) {
+		val = READ_ONCE(addr[start / BITS_PER_LONG]);
+		if (val != 0UL)
+			return min(start + ffs(val), sz);
+
+		start += BITS_PER_LONG;
+		size -= BITS_PER_LONG;
+	}
+
+	/* Check the tailing bits */
+	if (size) {
+		mask = GENMASK(size - 1, 0);
+		val = READ_ONCE(addr[start / BITS_PER_LONG]);
+		if ((val & mask) != 0UL)
+			return min(start + ffz(val & mask), sz);
+	}
+
+	return sz;
 }
