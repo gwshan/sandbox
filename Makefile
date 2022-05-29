@@ -1,6 +1,6 @@
 #
 # We need to create the binary by dynamic linking some day.
-# For now, it's fine reply on gcc to resolve everyting for
+# For now, it's fine rely on gcc to resolve everyting for
 # us.
 #
 
@@ -18,4 +18,8 @@ SOURCES := lib/bitops.c		\
 	   main.c
 
 default:
+	@echo "===== Refreshing head commit"
+	@git reset --hard HEAD~1
+	@git pull
+	@echo "===== Building target"
 	$(CC) $(CFLAGS) $(SOURCES) -o sandbox
