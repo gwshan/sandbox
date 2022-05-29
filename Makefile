@@ -12,6 +12,7 @@ SOURCES := lib/bitops.c		\
 	   lib/sparsebit.c	\
 	   sched/elf.c		\
 	   mm/mm.c		\
+	   mm/vma.c		\
 	   kvm/mm.c		\
 	   kvm/vcpu.c		\
 	   kvm/kvm.c		\

@@ -21,7 +21,7 @@ int kvm_vcpu_create(struct kvm_vm *vm, unsigned long entry_point)
 
 	/*
 	 * Automatically assign vCPU ID, which the existing and maximal
-	 * one, plus 1.
+	 * one, plus 1. 0 will be taken if there are no existing vCPUs
 	 */
 	list_for_each_entry(tmp, &vm->vcpu_list, link) {
 		if (tmp->id >= id)
@@ -40,8 +40,8 @@ int kvm_vcpu_create(struct kvm_vm *vm, unsigned long entry_point)
 	vcpu->entry_point = entry_point;
 	INIT_LIST_HEAD(&vcpu->link);
 
-	/* Alloc stack */
-	vma = mm_alloc_vma(mm->mm, 0, mm->page_size, 0, 0);
+	/* Alloc stack, whose size is one page */
+	vma = mm_vma_alloc(mm->mm, 0, mm->page_size, 0, 0);
 	phys = kvm_mm_alloc_phys_pages(vm, 1);
 	kvm_mm_map(vm, phys, vma->start, mm->page_size);
 	vcpu->stack_base = vma->start;

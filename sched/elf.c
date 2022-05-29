@@ -74,7 +74,7 @@ static int elf_load_segments(struct kvm_vm *vm,
 
 		phys = kvm_mm_alloc_phys_pages(vm,
 				DIV_ROUND_UP(phdr->p_memsz, vm->mm.page_size));
-		vma = mm_alloc_vma(vm->mm.mm,
+		vma = mm_vma_alloc(vm->mm.mm,
 				   ALIGN_DOWN(phdr->p_vaddr, vm->mm.page_size),
 				   ALIGN(phdr->p_memsz, vm->mm.page_size),
 				   MM_VMA_FLAG_FIXED, 0);

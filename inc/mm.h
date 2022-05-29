@@ -59,9 +59,9 @@ struct mm {
 /* APIs */
 struct mm *mm_create(unsigned long addr, unsigned long end);
 void mm_destroy(struct mm *mm);
-struct vm_area *mm_find_vma(struct mm *mm, unsigned long addr,
+struct vm_area *mm_vma_find(struct mm *mm, unsigned long addr,
 			    struct vm_area **pprev);
-struct vm_area *mm_alloc_vma(struct mm *mm, unsigned long addr,
+struct vm_area *mm_vma_alloc(struct mm *mm, unsigned long addr,
 			     unsigned long len, unsigned long flags,
 			     unsigned long prot);
 
