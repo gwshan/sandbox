@@ -7,8 +7,14 @@
 CC	:= gcc
 CFLAGS	:= -Wall -O2 -g -Wstrict-prototypes -Wuninitialized	\
 	   -std=gnu99 -fno-stack-protector -I inc -pthread
-SOURCES := lib/bitops.c	lib/rbtree.c lib/sparsebit.c		\
-	   sched/elf.c mm/mm.c kvm/mm.c kvm/kvm.c		\
+SOURCES := lib/bitops.c		\
+	   lib/rbtree.c		\
+	   lib/sparsebit.c	\
+	   sched/elf.c		\
+	   mm/mm.c		\
+	   kvm/mm.c		\
+	   kvm/vcpu.c		\
+	   kvm/kvm.c		\
 	   main.c
 
 default:
